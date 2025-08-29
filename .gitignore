@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+uv.lock
+.python-version
+.vscode
+*.egg-info/
+.DS_Store

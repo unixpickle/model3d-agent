@@ -1,0 +1,12 @@
+[project]
+name = "model3d-agent"
+version = "0.1.0"
+description = "Generate 3D models with coding-AI"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "openai",
+]
+
+[tool.setuptools]
+packages = ["model3d_agent"]
