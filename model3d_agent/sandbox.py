@@ -3,8 +3,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass
+from threading import Lock, Thread
 
-CURRENT_FILE = os.path.abspath(__file__)
+CurrentFile = os.path.abspath(__file__)
 
 
 def _build_profile(allowed_dir: str) -> str:
@@ -33,18 +35,27 @@ def _build_profile(allowed_dir: str) -> str:
     return profile
 
 
+@dataclass
+class ProcessOutput:
+    returncode: int
+    stdout: str
+    stderr: str
+
+
 def run_sandboxed(
     cmd: list[str],
     allowed_dir: str,
     mem_bytes: int,
     cpu_seconds: int | None = None,
     env: dict[str, str] | None = None,
-    capture_output: bool = True,
     timeout: float | None = None,
-) -> subprocess.CompletedProcess:
+    max_output_bytes: int = 32768,
+) -> ProcessOutput:
     """
     Run `cmd` under a macOS seatbelt sandbox with FS writes restricted to
     `allowed_dir` and no network, and cap memory via RLIMITs.
+
+    May raise a subprocess.TimeoutExpired if execution fails.
     """
     if shutil.which("sandbox-exec") is None:
         raise RuntimeError(
@@ -68,7 +79,7 @@ def run_sandboxed(
             profile_path,
             "--",
             sys.executable,
-            CURRENT_FILE,
+            CurrentFile,
             str(int(mem_bytes)),
             *cmd,
         ]
@@ -81,15 +92,66 @@ def run_sandboxed(
 
         cwd = allowed_dir
 
-        return subprocess.run(
+        return run_program_get_output(
             full_cmd,
             cwd=cwd,
             env=run_env,
-            capture_output=capture_output,
-            text=True,
-            check=False,
             timeout=timeout,
+            max_output_bytes=max_output_bytes,
         )
+
+
+def run_program_get_output(
+    full_cmd: list[str],
+    cwd: str | None = None,
+    env: dict | None = None,
+    timeout: float | None = None,
+    max_output_bytes: int = 32768,
+) -> ProcessOutput:
+    proc = subprocess.Popen(
+        full_cmd,
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    out_chunks_lock = Lock()
+    out_chunks = {}
+
+    def reader(name, stream):
+        chunks = []
+        total = 0
+        while data := stream.read(8192):
+            if total < max_output_bytes:
+                keep = min(len(data), max_output_bytes - total)
+                chunks.append(data[:keep])
+                total += keep
+        with out_chunks_lock:
+            out_chunks[name] = b"".join(chunks)
+        stream.close()
+
+    threads: list[Thread] = []
+    for name, stream in (("stdout", proc.stdout), ("stderr", proc.stderr)):
+        t = Thread(target=reader, args=(name, stream))
+        t.start()
+        threads.append(t)
+
+    try:
+        proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        for t in threads:
+            t.join()
+        raise
+
+    for t in threads:
+        t.join()
+
+    stdout = out_chunks["stdout"].decode(errors="replace")
+    stderr = out_chunks["stderr"].decode(errors="replace")
+
+    return ProcessOutput(returncode=proc.returncode, stdout=stdout, stderr=stderr)
 
 
 def entrypoint():
