@@ -50,7 +50,7 @@ class CodeExecutor:
         with self._execution_dir() as tmp_dir:
             tmp_image_name = f"rendering_{random.randint(0, 1000000)}.png"
             with open(os.path.join(tmp_dir, "main.go"), "w") as f:
-                f.write("package main\n\n" + code + "\n\n")
+                f.write(code + "\n\n")
                 f.write(
                     f"""\
 func main() {{
@@ -101,6 +101,8 @@ def run_example():
         ex.warmup()
         out = ex.execute_code(
             """\
+package main
+
 import (
     "github.com/unixpickle/model3d/model3d"
     "github.com/unixpickle/model3d/render3d"

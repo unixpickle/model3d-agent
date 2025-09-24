@@ -1,0 +1,21 @@
+Your objective is to create a 3D model in the model3d Go framework. The specific model you create should match the following prompt:
+
+{prompt}
+
+---
+
+{docs}
+
+---
+
+As a reminder, your goal is to create the following object as a 3D model:
+
+{prompt}
+
+Here is a previous attempt at a solution to this problem. After the code, I will show you some random renderings of what this code produces.
+
+```go
+{previous}
+```
+
+Your goal is to create a model that is at least as good (but ideally even better) than this previous solution. If the model has flaws, fix those flaws. If it achieves its initial goal, try to add more detail, either to the shape or color, to make it better match the prompt.

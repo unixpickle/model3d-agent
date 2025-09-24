@@ -1,0 +1,207 @@
+You can write functions and structs as you desire, but the entrypoint to your code should look like
+
+```
+func CreateModel() (*model3d.Mesh, toolbox3d.CoordColorFunc) {
+    ...
+}
+```
+
+You will typically create a mesh by first defining a `model3d.Solid`, which is an interface defined as follows
+
+```
+type Solid interface {
+	Min() Coord3D
+	Max() Coord3D
+	Contains(p Coord3D) bool
+}
+```
+
+You typically won't have to create a new type that implements `Solid`. Either you can create your own using
+
+```
+func CheckedFuncSolid(min, max Coord3D, f func(Coord3D) bool) Solid
+```
+
+Or you will compose other solids using primitives like
+ * model3d.JoinedSolid{solid1, ..., solidN} - a union over solids
+ * model3d.IntersectedSolid{solid1, ..., solidN} - an intersection over solids
+ * model3d.Subtract(positive, negative) - every point in positive but not in negative
+
+You can also transform solids
+```
+func TranslateSolid(solid Solid, offset Coord3D) Solid
+func ScaleSolid(solid Solid, s float64) Solid
+func VecScaleSolid(solid Solid, v Coord3D) Solid
+func RotateSolid(solid Solid, axis Coord3D, angle float64) Solid
+```
+
+Note that for RotateSolid(), you must pass in a normalized axis vector, which you can ensure using coord.Normalize().
+
+Once you have a Solid, you can turn it into a mesh using marching cubes or dual contouring.
+
+```
+func DualContour(s Solid, delta float64, repair, clip bool) *Mesh
+func MarchingCubesSearch(s Solid, delta float64, iters int) *Mesh
+```
+
+In both of these calls, delta defines the grid spacing for the initial algorithm. You don't want delta to be too small relative to the size of the solid, or else the mesh will be too large and the algorithm will take too long. For DualContour, you should probably pass repair=true and clip=false, and for MarchingCubesSearch, a good argument for iters is 8.
+
+Throughout the code, you will be working with `Coord3D` objects. This is
+
+```
+type Coord3D struct {
+	X float64
+	Y float64
+	Z float64
+}
+```
+
+You can build a Coord3D using functions like `XYZ(x, y, z)` and `X(x)`, etc. There are various helpers on a Coord3D:
+
+```
+func NewCoord3DArray(a [3]float64) Coord3D
+func NewCoord3DRandBounds(min, max Coord3D) Coord3D
+func NewCoord3DRandNorm() Coord3D
+func NewCoord3DRandUniform() Coord3D
+func NewCoord3DRandUnit() Coord3D
+func Ones(a float64) Coord3D
+func X(x float64) Coord3D
+func XY(x, y float64) Coord3D
+func XYZ(x, y, z float64) Coord3D
+func XZ(x, z float64) Coord3D
+func Y(y float64) Coord3D
+func YZ(y, z float64) Coord3D
+func Z(z float64) Coord3D
+func (c Coord3D) Abs() Coord3D
+func (c Coord3D) Add(c1 Coord3D) Coord3D
+func (c Coord3D) AddScalar(s float64) Coord3D
+func (c Coord3D) Array() [3]float64
+func (c Coord3D) Coord2D() Coord2D
+func (c Coord3D) Cross(c1 Coord3D) Coord3D
+func (c Coord3D) Dist(c1 Coord3D) float64
+func (c Coord3D) Div(c1 Coord3D) Coord3D
+func (c Coord3D) Dot(c1 Coord3D) float64
+func (c Coord3D) Geo() GeoCoord
+func (c Coord3D) L1Dist(c1 Coord3D) float64
+func (c Coord3D) Max(c1 Coord3D) Coord3D
+func (c Coord3D) MaxCoord() float64
+func (c Coord3D) Mid(c1 Coord3D) Coord3D
+func (c Coord3D) Min(c1 Coord3D) Coord3D
+func (c Coord3D) Mul(c1 Coord3D) Coord3D
+func (c Coord3D) Norm() float64
+func (c Coord3D) NormSquared() float64
+func (c Coord3D) Normalize() Coord3D
+func (c Coord3D) OrthoBasis() (Coord3D, Coord3D)
+func (c Coord3D) ProjectOut(c1 Coord3D) Coord3D
+func (c Coord3D) Recip() Coord3D
+func (c Coord3D) Reflect(c1 Coord3D) Coord3D
+func (c Coord3D) Scale(s float64) Coord3D
+func (c Coord3D) SquaredDist(c1 Coord3D) float64
+func (c Coord3D) Sub(c1 Coord3D) Coord3D
+func (c Coord3D) Sum() float64
+func (c Coord3D) XY() Coord2D
+func (c Coord3D) XZ() Coord2D
+func (c Coord3D) YX() Coord2D
+func (c Coord3D) YZ() Coord2D
+func (c Coord3D) ZX() Coord2D
+func (c Coord3D) ZY() Coord2D
+```
+
+A Coord2D is similar to a Coord3D, but only with X and Y attributes.
+
+Finally, there are various primitive shapes that implement `Solid`, as well as other interfaces like SDF and Collider. These types will typically take methods on pointers, so `*Rect` is used, for example.
+
+```
+type Rect struct {
+	MinVal Coord3D
+	MaxVal Coord3D
+}
+
+type Sphere struct {
+	Center Coord3D
+	Radius float64
+}
+
+type Cone struct {
+	Tip    Coord3D
+	Base   Coord3D
+	Radius float64
+}
+
+type Cylinder struct {
+	P1     Coord3D
+	P2     Coord3D
+	Radius float64
+}
+
+type Torus struct {
+	Center      Coord3D
+	Axis        Coord3D
+	OuterRadius float64
+	InnerRadius float64
+}
+```
+
+As a full example, here is code to create a sphere on top of a blue cube.
+
+```
+package main
+
+import (
+    "github.com/unixpickle/model3d/model3d"
+    "github.com/unixpickle/model3d/render3d"
+    "github.com/unixpickle/model3d/toolbox3d"
+)
+
+func CreateModel() (*model3d.Mesh, toolbox3d.CoordColorFunc) {
+    solid := model3d.JoinedSolid{
+        model3d.NewRect(model3d.XYZ(-1, -1, -1), model3d.XYZ(1, 1, 1)),
+        &model3d.Sphere{Center: model3d.Z(1.5), Radius: 0.5},
+    }
+    delta := 0.05
+    mesh := model3d.DualContour(solid, delta, true, false) // repair=true, clip=false
+    return mesh, func(c model3d.Coord3D) render3d.Color {
+        if c.Z > 1.001 {
+            // red
+            return render3d.NewColorRGB(1, 0, 0)
+        } else {
+            // blue
+            return render3d.NewColorRGB(0, 0, 1)
+        }
+    }
+}
+```
+
+Here is the same example written with a raw Solid:
+
+```
+package main
+
+import (
+    "github.com/unixpickle/model3d/model3d"
+    "github.com/unixpickle/model3d/render3d"
+    "github.com/unixpickle/model3d/toolbox3d"
+)
+
+func CreateModel() (*model3d.Mesh, toolbox3d.CoordColorFunc) {
+    solid := model3d.CheckedFuncSolid(
+        model3d.XYZ(-1, -1, -1),
+        model3d.XYZ(1, 1, 2.0),
+        func(c model3d.Coord3D) bool {
+            if c.Z < 1 {
+                return true
+            }
+            return c.Dist(model3d.Z(1.5)) < 0.5
+        },
+    )
+    delta := 0.05
+    mesh := model3d.DualContour(solid, delta, true, false) // repair=true, clip=false
+    return mesh, func(c model3d.Coord3D) render3d.Color {
+        if c.Z > 1.001 {
+            return render3d.NewColorRGB(1, 0, 0)
+        } else {
+            return render3d.NewColorRGB(0, 0, 1)
+        }
+    }
+}
+```
