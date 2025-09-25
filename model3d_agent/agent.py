@@ -1,6 +1,4 @@
-import base64
 import re
-from dataclasses import dataclass
 from typing import Literal
 
 from openai import OpenAI

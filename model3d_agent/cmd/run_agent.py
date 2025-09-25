@@ -16,6 +16,7 @@ def main():
     parser.add_argument("--prompt", type=str, required=True)
     parser.add_argument("--run_dir", type=str, required=True)
     parser.add_argument("--max_initial_attempts", type=int, default=5)
+    parser.add_argument("--max_refinements", type=int, default=50)
     args = parser.parse_args()
 
     run_dir: str = args.run_dir
@@ -43,7 +44,7 @@ def main():
         else:
             print("loaded current best solution.")
 
-        while True:
+        for _ in range(args.max_refinements):
             print("running refinement step")
             chat, solution = create_solution(
                 client=client,
@@ -66,6 +67,7 @@ def main():
                 )
                 if comparison == "b":
                     print("found better solution!")
+                    best_solution = solution
                     mark_best_solution(run_dir, id)
                 else:
                     print(

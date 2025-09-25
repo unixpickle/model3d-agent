@@ -10,10 +10,9 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["model3d_agent"]
+packages = ["model3d_agent", "model3d_agent.cmd"]
 
 
 [tool.setuptools.package-data]
-"model3d_agent" = [
-    "prompts/*.txt",
-]
+"model3d_agent" = ["prompts/*.txt"]
+"model3d_agent.cmd" = ["view_chat_assets/*"]

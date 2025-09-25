@@ -4,6 +4,7 @@ I have two 3D models, both of which are supposed to satisfy the following captio
 
 I have created a grid of randomly oriented renderings for each of the two 3D models.
 I will give you both of these grids, and you should tell me which one is better, the first or second.
+During your judgment, think about which of the two models looks more accurately like the prompt, and which model has fewer flaws.
 You may think out loud for a bit before you give your answer.
-However, when you do give your answer, end your response with a newline and format it as either "Answer: first" or "Answer: second".
+When you do give your answer, end your response with a newline and format it as either "Answer: first" or "Answer: second" to choose the first or second model.
 If it is a very close tie, then return "Answer: same".

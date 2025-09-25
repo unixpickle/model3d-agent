@@ -32,7 +32,7 @@ def completion(client: OpenAI, instructions: str, input: Any) -> str:
     while True:
         try:
             response = client.responses.create(
-                model="gpt-4o",
+                model="gpt-4.1",
                 instructions=instructions,
                 input=input,
             )

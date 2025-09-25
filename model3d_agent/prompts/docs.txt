@@ -22,12 +22,50 @@ You typically won't have to create a new type that implements `Solid`. Either yo
 func CheckedFuncSolid(min, max Coord3D, f func(Coord3D) bool) Solid
 ```
 
-Or you will compose other solids using primitives like
+For example, we can create shapes using math on input coordinates:
+
+```go
+func MetalRing() model3d.Solid {
+	r := 0.45
+	thickness := 0.1
+	minThickness := 0.07
+	depth := 0.22
+	bevelRing := model3d.CheckedFuncSolid(
+		model3d.XYZ(-r-thickness, -r-thickness, 0),
+		model3d.XYZ(r+thickness, r+thickness, depth),
+		func(c model3d.Coord3D) bool {
+			edgeDist := math.Min(depth-c.Z, c.Z)
+			th := math.Min(thickness, edgeDist+minThickness)
+			return math.Abs(c.XY().Norm()-(r+thickness/2)) < th/2
+		},
+	)
+	return bevelRing
+}
+```
+
+You can compose multiple solids using primitives like
  * model3d.JoinedSolid{solid1, ..., solidN} - a union over solids
  * model3d.IntersectedSolid{solid1, ..., solidN} - an intersection over solids
  * model3d.Subtract(positive, negative) - every point in positive but not in negative
 
-You can also transform solids
+Note that JoinedSolid is a `[]Solid`, so we can do things like
+
+```go
+var solid model3d.JoinedSolid
+for _, x := range []float64{-FrameThickness, DrawerWidth} {
+	solid = append(solid, model3d.NewRect(
+		model3d.XZ(x, -FrameThickness),
+		model3d.XYZ(
+			x + FrameThickness,
+			DrawerDepth + FrameThickness,
+			DrawerCount*DrawerHeight + FrameThickness,
+		),
+	))
+}
+```
+
+You can also transform Solids with these methods
+
 ```
 func TranslateSolid(solid Solid, offset Coord3D) Solid
 func ScaleSolid(solid Solid, s float64) Solid
@@ -44,11 +82,11 @@ func DualContour(s Solid, delta float64, repair, clip bool) *Mesh
 func MarchingCubesSearch(s Solid, delta float64, iters int) *Mesh
 ```
 
-In both of these calls, delta defines the grid spacing for the initial algorithm. You don't want delta to be too small relative to the size of the solid, or else the mesh will be too large and the algorithm will take too long. For DualContour, you should probably pass repair=true and clip=false, and for MarchingCubesSearch, a good argument for iters is 8.
+In both of these calls, delta defines the grid spacing for the initial algorithm. You don't want delta to be too small relative to the size of the solid, or else the mesh will be too large and the algorithm will take too long. However, if the delta is too large, then thin shapes might be missing or have holes in them. For DualContour, you should probably pass repair=true and clip=false, and for MarchingCubesSearch, a good argument for iters is 8.
 
 Throughout the code, you will be working with `Coord3D` objects. This is
 
-```
+```go
 type Coord3D struct {
 	X float64
 	Y float64
@@ -109,7 +147,7 @@ func (c Coord3D) ZY() Coord2D
 
 A Coord2D is similar to a Coord3D, but only with X and Y attributes.
 
-Finally, there are various primitive shapes that implement `Solid`, as well as other interfaces like SDF and Collider. These types will typically take methods on pointers, so `*Rect` is used, for example.
+There are various primitive shapes that implement `Solid`, as well as other interfaces like SDF and Collider. These types will typically take methods on pointers, so `*Rect` is used, for example.
 
 ```
 type Rect struct {
@@ -142,7 +180,107 @@ type Torus struct {
 }
 ```
 
-As a full example, here is code to create a sphere on top of a blue cube.
+Note that you can use these primitives inside of your own solid function by calling their `Contains()` method. For example, here we use a cone inside a CheckedFuncSolid call, as well as a separate cone to compute the bounds for the solid.
+
+```go
+func CurvyCone(base, tip model3d.Coord3D, radius, inset float64) model3d.Solid {
+	baseCone := &model3d.Cone{
+		Base:   base,
+		Tip:    tip,
+		Radius: radius,
+	}
+	return model3d.CheckedFuncSolid(
+		baseCone.Min(),
+		baseCone.Max(),
+		func(c model3d.Coord3D) bool {
+			thetaOffset := (c.Z - base.Z)
+			theta := math.Atan2(c.Y, c.X)
+			r := radius - inset*math.Pow(math.Cos(theta*15+5*thetaOffset), 2)
+			cone := model3d.Cone{
+				Base:   base,
+				Tip:    tip,
+				Radius: r,
+			}
+			return cone.Contains(c)
+		},
+	)
+}
+```
+
+We define a coloring for the object similar to how we defined a solid: as a function that takes a coordinate and outputs a color. In particular, we define a toolbox3d.CoordColorFunc:
+
+```
+type CoordColorFunc func(c model3d.Coord3D) render3d.Color
+```
+
+A color can be created with `render3d.NewColorRGB()` where all three arguments are sRGB values in [0, 1]. A color is actually just a Coord3D where the X, Y and Z are linear RGB values:
+
+```go
+type Color = model3d.Coord3D
+```
+
+Additionally, we provide an `RGB()` method to get the sRGB values back out of a color:
+
+```
+func RGB(c Color) (float64, float64, float64)
+```
+
+When defining a color function, we must be careful to support arbitrary points that are slightly outside the surface of our Solid. This is because the color function is called with points that are on the surface of the mesh, but the mesh is just an approximation of the surface of the Solid. Thus, some points on the mesh might actually fall outside of the Solid we meshified.
+
+To this end, we can use the extended marching cubes helpers
+
+```
+func DualContourInterior(s Solid, delta float64, repair, clip bool) (*Mesh, []Coord3D)
+func MarchingCubesInterior(s Solid, delta float64, iters int) (*Mesh, *CoordMap[Coord3D])
+```
+
+These methods both return an extra object that contains information about points within the Solid near the surface of the mesh. In the case of DualContourInterior(), the result is points that are known to be within the Solid. For MarchingCubesInterior, the result is a mapping from each mesh vertex to a point in the Solid.
+
+Both of these types can be passed to the helper function JoinedSolidcoordColorFunc, which maps different solids to different colors.
+
+```go
+base, baseColor := Base()
+body, bodyColor := Body()
+eyes, eyesColor := Eyes()
+ears, earsColor := Ears()
+nose, noseColor := Nose()
+teeth, teethColor := Teeth()
+hands, handsColor := Hands()
+feet, feetColor := Feet()
+solid := model3d.JoinedSolid{base, body, eyes, ears, nose, teeth, hands, feet}
+mesh, points := model3d.MarchingCubesInterior(solid, 0.01, 8)
+cf := toolbox3d.JoinedSolidCoordColorFunc(
+	points,
+	base, baseColor,
+	body, bodyColor,
+	eyes, eyesColor,
+	ears, earsColor,
+	nose, noseColor,
+	teeth, teethColor,
+	hands, handsColor,
+	feet, feetColor,
+)
+```
+
+We can also manually use a k-d tree to find nearby points:
+
+```go
+// when points is a []Coord3D
+coordTree := model3d.NewCoordTree(points)
+
+// when points is a *CoordMap[Coord3D]
+cs := make([]model3d.Coord3D, 0, points.Len())
+points.ValueRange(func(c model3d.Coord3D) bool {
+	cs = append(cs, c)
+	return true
+})
+coordTree := model3d.NewCoordTree(cs)
+
+// Given some point c, we can find nearby point:
+interiorPoint := coordTree.NearestNeighbor(c)
+```
+
+As a simple, complete example, here is code to create a sphere on top of a blue cube.
 
 ```
 package main
@@ -161,7 +299,8 @@ func CreateModel() (*model3d.Mesh, toolbox3d.CoordColorFunc) {
     delta := 0.05
     mesh := model3d.DualContour(solid, delta, true, false) // repair=true, clip=false
     return mesh, func(c model3d.Coord3D) render3d.Color {
-        if c.Z > 1.001 {
+		// Note the small epsilon to handle slight errors in the mesh.
+        if c.Z > 1 + 1e-3 {
             // red
             return render3d.NewColorRGB(1, 0, 0)
         } else {

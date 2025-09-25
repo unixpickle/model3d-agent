@@ -1,0 +1,220 @@
+:root {
+    --bg: #0b0c10;
+    --panel: #121418;
+    --panel-2: #151821;
+    --text: #e6e6e6;
+    --muted: #a9b0bd;
+    --green: #1f9d55;
+    --red: #e3342f;
+    --blue: #3b82f6;
+    --ring: rgba(59, 130, 246, 0.25);
+    --bubble-user: #1f2937;
+    --bubble-assistant: #0f172a;
+    --bubble-sys: #1b2a3a;
+    --code-bg: #0d1117;
+    --code-border: #1f2937;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+a {
+    color: var(--blue);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.container {
+    max-width: 1080px;
+    margin: 24px auto 64px;
+    padding: 0 16px;
+}
+
+.header {
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.05));
+    border: 1px solid #1f2a3a;
+    border-radius: 16px;
+    padding: 16px 18px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.header .meta {
+    flex: 1;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+}
+
+.button {
+    border: 1px solid #253043;
+    background: #0d1422;
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.button:focus {
+    outline: none;
+    box-shadow: 0 0 0 4px var(--ring);
+}
+
+.chat {
+    margin-top: 16px;
+    display: grid;
+    gap: 10px;
+}
+
+.msg {
+    border: 1px solid #1f2937;
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+}
+
+.role {
+    width: 120px;
+    min-width: 120px;
+    padding: 10px 12px;
+    font-weight: 600;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--panel-2);
+    border-right: 1px solid #1f2937;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 12px;
+}
+
+.body {
+    flex: 1;
+    background: var(--panel);
+    padding: 12px 14px;
+    display: grid;
+    gap: 8px;
+}
+
+.chunk {
+    padding: 10px 12px;
+    border: 1px solid #1f2937;
+    border-radius: 12px;
+    background: #0e1116;
+}
+
+.user .chunk {
+    background: var(--bubble-user);
+}
+
+.assistant .chunk {
+    background: var(--bubble-assistant);
+}
+
+.system .chunk {
+    background: var(--bubble-sys);
+}
+
+.chunk h4 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.chunk .text {
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+.codeblock {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    padding: 12px;
+    border-radius: 10px;
+    overflow-x: auto;
+    /* ⬅ adds scrollbar if needed */
+    white-space: pre;
+    /* ⬅ don’t wrap, preserve original formatting */
+    max-width: 100%;
+    /* ⬅ never overflow parent */
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 13px;
+}
+
+img.chat-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    border: 1px solid #1f2937;
+    display: block;
+}
+
+.small {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.footer {
+    margin-top: 16px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+hr.sep {
+    border: none;
+    height: 1px;
+    background: #1f2937;
+    margin: 16px 0;
+}
+
+.msg {
+    max-width: 100%;
+    /* ⬅ message itself never exceeds page width */
+    overflow: hidden;
+    /* ⬅ don't let children push it wider */
+}
+
+.chunk {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.body {
+    max-width: 100%;
+    /* ⬅ same for the body container */
+    overflow-x: hidden;
+    /* ⬅ if something tries to overflow, allow scroll */
+}
+
+.codeblock {
+    max-width: 100%;
+    /* ⬅ keep code block constrained */
+    overflow-x: auto;
+    /* ⬅ scroll instead of expanding parent */
+    white-space: pre;
+    /* or pre-wrap if you prefer wrapping */
+    box-sizing: border-box;
+    /* ensure padding/borders respect max-width */
+}

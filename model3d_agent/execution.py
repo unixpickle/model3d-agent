@@ -25,12 +25,15 @@ class CodeExecutor:
 
     def warmup(self):
         self.warmed_up = True
-        subprocess.check_call(
-            ["go", "mod", "init", "codeexecutor"], cwd=self.directory.name
+        subprocess.check_output(
+            ["go", "mod", "init", "codeexecutor"],
+            cwd=self.directory.name,
+            stderr=subprocess.STDOUT,
         )
-        subprocess.check_call(
+        subprocess.check_output(
             ["go", "get", "github.com/unixpickle/model3d/model3d@v0.4.6"],
             cwd=self.directory.name,
+            stderr=subprocess.STDOUT,
         )
 
     def cleanup(self):

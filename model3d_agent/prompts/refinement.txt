@@ -18,4 +18,6 @@ Here is a previous attempt at a solution to this problem. After the code, I will
 {previous}
 ```
 
-Your goal is to create a model that is at least as good (but ideally even better) than this previous solution. If the model has flaws, fix those flaws. If it achieves its initial goal, try to add more detail, either to the shape or color, to make it better match the prompt.
+Identify the flaws in this previous attempt and any improvements that could be made, such as adding detail.
+
+Do not shy away from rewriting some or all of the origi al model if the previous approach has fundamental limitations.
