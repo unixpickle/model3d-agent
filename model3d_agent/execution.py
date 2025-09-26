@@ -5,10 +5,11 @@ import shutil
 import subprocess
 import tempfile
 from contextlib import contextmanager
-from typing import Iterator
+from typing import Iterator, Sequence
 
 from PIL import Image
 
+from .chat import read_prompt_file
 from .sandbox import run_sandboxed
 
 
@@ -52,40 +53,17 @@ class CodeExecutor:
         """Execute the code and return the rendered image bytes."""
         with self._execution_dir() as tmp_dir:
             tmp_image_name = f"rendering_{random.randint(0, 1000000)}.png"
-            with open(os.path.join(tmp_dir, "main.go"), "w") as f:
+            with open(os.path.join(tmp_dir, "model.go"), "w") as f:
                 f.write(code + "\n\n")
+            with open(os.path.join(tmp_dir, "main.go"), "w") as f:
                 f.write(
-                    f"""\
-func main() {{
-    mesh, colorFunc := CreateModel()
-    render3d.SaveRandomGrid("{tmp_image_name}", mesh, 3, 3, 300, colorFunc.RenderColor)
-}}"""
+                    read_prompt_file("grid.go").replace(
+                        "{tmp_image_name}", tmp_image_name
+                    )
                 )
 
-            proc = subprocess.run(
-                ["go", "build", "-o", "executable"],
-                cwd=tmp_dir,
-                capture_output=True,
-                text=True,
-            )
-            if proc.returncode != 0:
-                raise ExecutionError("Failed to build:\n\n" + proc.stderr)
+            self._run_in_tmp_dir(tmp_dir, memory_limit=memory_limit, timeout=timeout)
 
-            try:
-                result = run_sandboxed(
-                    [os.path.join(tmp_dir, "executable")],
-                    tmp_dir,
-                    mem_bytes=memory_limit,
-                    timeout=timeout,
-                )
-            except subprocess.TimeoutExpired:
-                raise ExecutionError("Program execution timed out.")
-            if result.returncode:
-                raise ExecutionError(
-                    f"Program returned status: {result.returncode}\n\n"
-                    + f"Standard output (may be truncated):\n{result.stdout}\n\n"
-                    + f"Standard error (may be truncated):\n{result.stderr}"
-                )
             img_path = os.path.join(tmp_dir, tmp_image_name)
             if not os.path.exists(img_path):
                 raise ExecutionError("Program exited without saving a rendering.")
@@ -96,6 +74,75 @@ func main() {{
                 return buf.getvalue()
             except OSError:
                 raise ExecutionError("PNG data is not valid.")
+
+    def execute_code_pan(
+        self,
+        code: str,
+        frames: int,
+        resolution: int,
+        zoom: float = 1.3,
+        memory_limit: int = 1_000_000_000,
+        timeout: float = 60.0,
+    ) -> list[bytes]:
+        """Execute the code and render a pan around the model."""
+        with self._execution_dir() as tmp_dir:
+            with open(os.path.join(tmp_dir, "model.go"), "w") as f:
+                f.write(code)
+            with open(os.path.join(tmp_dir, "main.go"), "w") as f:
+                f.write(read_prompt_file("rotate.go"))
+
+            self._run_in_tmp_dir(
+                tmp_dir,
+                memory_limit=memory_limit,
+                timeout=timeout,
+                args=[
+                    "-frames",
+                    str(frames),
+                    "-size",
+                    str(resolution),
+                    "-zoom",
+                    str(zoom),
+                ],
+            )
+
+            outputs = []
+            for i in range(frames):
+                try:
+                    img = Image.open(os.path.join(tmp_dir, f"{i:03}.png"))
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG", quality=90)
+                    outputs.append(buf.getvalue())
+                except (OSError, FileNotFoundError):
+                    raise ExecutionError("PNG frame not found.")
+            return outputs
+
+    def _run_in_tmp_dir(
+        self, tmp_dir, memory_limit: int, timeout: float, args: Sequence[str] = ()
+    ):
+        proc = subprocess.run(
+            ["go", "build", "-o", "executable"],
+            cwd=tmp_dir,
+            capture_output=True,
+            text=True,
+        )
+        if proc.returncode != 0:
+            raise ExecutionError("Failed to build:\n\n" + proc.stderr)
+
+        try:
+            result = run_sandboxed(
+                [os.path.join(tmp_dir, "executable"), *args],
+                tmp_dir,
+                mem_bytes=memory_limit,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            raise ExecutionError("Program execution timed out.")
+        if result.returncode:
+            raise ExecutionError(
+                f"Program returned status: {result.returncode}\n\n"
+                + f"Standard output (may be truncated):\n{result.stdout}\n\n"
+                + f"Standard error (may be truncated):\n{result.stderr}"
+            )
 
 
 def run_example():

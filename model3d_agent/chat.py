@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from .api_util import ChatMessage
-from .execution import ExecutionError
 
 PromptDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts")
 
