@@ -10,8 +10,8 @@ In practice, the quality is pretty terrible, but it's neat to see the code that 
 
 | Caption                             | Rendering                                        | Code                                |
 |-------------------------------------|--------------------------------------------------|-------------------------------------|
-| a cactus                            | ![Cactus rendering][examples/cactus/cactus.gif]  | [Code][examples/cactus/cactus.go]   |
-| a fancy sand castle                 | ![Sandcastle rendering][examples/sandcastle/sandcastle.gif] | [Code][examples/sandcastle/sandcastle.go] |
-| a red five piece drum set with cymbals | ![Drums rendering][examples/drums/drums.gif]    | [Code][examples/drums/drums.go]     |
-| an adjustable table lamp            | ![Lamp rendering][examples/lamp/lamp.gif]        | [Code][examples/lamp/lamp.go]       |
+| a cactus                            | ![Cactus rendering](examples/cactus/cactus.gif)  | [Code](examples/cactus/cactus.go)   |
+| a fancy sand castle                 | ![Sandcastle rendering](examples/sandcastle/sandcastle.gif) | [Code](examples/sandcastle/sandcastle.go) |
+| a red five piece drum set with cymbals | ![Drums rendering](examples/drums/drums.gif)    | [Code](examples/drums/drums.go)     |
+| an adjustable table lamp            | ![Lamp rendering](examples/lamp/lamp.gif)        | [Code](examples/lamp/lamp.go)       |
 
