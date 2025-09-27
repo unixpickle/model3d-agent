@@ -58,9 +58,9 @@ func main() {
 			Camera: furthestCamera,
 			Lights: lights,
 		}
-		subImage := render3d.NewImage(imgSize, imgSize)
+		subImage := render3d.NewImage(imgSize*2, imgSize*2)
 		subImage.SetAll(render3d.NewColor(1))
 		caster.Render(subImage, xObj)
-		subImage.Save(fmt.Sprintf("%03d.png", i))
+		subImage.Downsample(2).Save(fmt.Sprintf("%03d.png", i))
 	}
 }

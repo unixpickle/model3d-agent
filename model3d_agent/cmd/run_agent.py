@@ -17,6 +17,8 @@ def main():
     parser.add_argument("--run_dir", type=str, required=True)
     parser.add_argument("--max_initial_attempts", type=int, default=5)
     parser.add_argument("--max_refinements", type=int, default=50)
+    parser.add_argument("--max_in_context_refinements", type=int, default=5)
+    parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
     run_dir: str = args.run_dir
@@ -29,11 +31,14 @@ def main():
     executor.warmup()
     try:
         if not (best_solution := find_current_best_solution(run_dir)):
+            print("creating initial solution...")
             chat, solution = create_solution(
                 client=client,
                 executor=executor,
                 prompt=prompt,
                 max_attempts=args.max_initial_attempts,
+                max_refinements=args.max_in_context_refinements,
+                verbose=args.verbose,
             )
             id = save_solution(run_dir, chat, solution)
             if solution is None:
@@ -52,6 +57,8 @@ def main():
                 prompt=prompt,
                 previous=best_solution,
                 max_attempts=args.max_initial_attempts,
+                max_refinements=args.max_in_context_refinements,
+                verbose=args.verbose,
             )
             id = save_solution(run_dir, chat, solution)
             print("output ID: " + id)

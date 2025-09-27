@@ -1,3 +1,5 @@
+You are writing Go code. When your code has build errors, I will tell you. In this version of Go, it is an error to declare an unused variable.
+
 You can write functions and structs as you desire, but the entrypoint to your code should look like
 
 ```

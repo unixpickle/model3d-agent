@@ -18,6 +18,12 @@ Here is a previous attempt at a solution to this problem. After the code, I will
 {previous}
 ```
 
-Identify the flaws in this previous attempt and any improvements that could be made, such as adding detail.
+Note that the previous attempt was written without looking at the result. Here is a criticism of it based on looking at the actual model:
 
-Do not shy away from rewriting some or all of the origi al model if the previous approach has fundamental limitations.
+---
+
+{critique}
+
+---
+
+In the very least, you should try to address some of the above criticism, while improving the model if possible.

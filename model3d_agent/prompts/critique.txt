@@ -1,0 +1,5 @@
+I have some renders of a 3D model from random angles. The model was created without ever looking at a rendering, so it might be very broken or ugly. The prompt for the model is supposed to be:
+
+{prompt}
+
+What is wrong or broken in this model and what could be fixed or improved? Give a bit of feedback.

@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass
 from functools import lru_cache
 
-from .api_util import ChatMessage
+from .api_util import ChatMessage, ChatMessageContentImage
 
 PromptDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts")
 
@@ -32,13 +32,14 @@ class Chat:
         )
 
     @classmethod
-    def for_prompt_and_solution(cls, prompt: str, previous: Solution) -> "Chat":
+    def for_prompt_and_solution(
+        cls, prompt: str, previous: Solution, critique: str
+    ) -> "Chat":
         instructions = read_prompt_file("instructions.txt")
         docs = read_prompt_file("docs.txt")
         first_message = read_prompt_file("refinement.txt").format(
-            prompt=prompt, docs=docs, previous=previous.code
+            prompt=prompt, docs=docs, previous=previous.code, critique=critique
         )
-        render_b64 = base64.b64encode(previous.rendering).decode("ascii")
         return cls(
             instructions=instructions,
             messages=[
@@ -46,11 +47,7 @@ class Chat:
                     "role": "user",
                     "content": [
                         {"type": "input_text", "text": first_message},
-                        {
-                            "type": "input_image",
-                            "image_url": f"data:image/jpeg;base64,{render_b64}",
-                            "detail": "low",
-                        },
+                        image_block(previous.rendering),
                     ],
                 }
             ],
@@ -59,8 +56,6 @@ class Chat:
     @classmethod
     def for_comparison(cls, prompt: str, a: bytes, b: bytes) -> "Chat":
         msg = read_prompt_file("compare.txt").format(prompt=prompt)
-        b64_a = base64.b64encode(a).decode("ascii")
-        b64_b = base64.b64encode(b).decode("ascii")
         return Chat(
             instructions="You are a helpful assistant which can identify and compare rendered 3D models.",
             messages=[
@@ -68,14 +63,24 @@ class Chat:
                     "role": "user",
                     "content": [
                         {"type": "input_text", "text": msg},
-                        {
-                            "type": "input_image",
-                            "image_url": f"data:image/jpeg;base64,{b64_a}",
-                        },
-                        {
-                            "type": "input_image",
-                            "image_url": f"data:image/jpeg;base64,{b64_b}",
-                        },
+                        image_block(a),
+                        image_block(b),
+                    ],
+                },
+            ],
+        )
+
+    @classmethod
+    def for_critique(cls, prompt: str, img_data: bytes) -> "Chat":
+        msg = read_prompt_file("critique.txt").format(prompt=prompt)
+        return Chat(
+            instructions="You are a helpful assistant which can identify, describe, and critique rendered 3D models.",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": msg},
+                        image_block(img_data),
                     ],
                 },
             ],
@@ -99,6 +104,32 @@ class Chat:
                 }
             ],
         )
+
+    def with_new_rendering(self, image: bytes) -> "Chat":
+        return Chat(
+            instructions=self.instructions,
+            messages=self.messages
+            + [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": read_prompt_file("continue.txt"),
+                        },
+                        image_block(image),
+                    ],
+                }
+            ],
+        )
+
+
+def image_block(data: bytes) -> ChatMessageContentImage:
+    b64 = base64.b64encode(data).decode("ascii")
+    return {
+        "type": "input_image",
+        "image_url": f"data:image/jpeg;base64,{b64}",
+    }
 
 
 @lru_cache()
